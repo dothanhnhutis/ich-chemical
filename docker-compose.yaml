@@ -1,0 +1,20 @@
+services:
+  postgres:
+    container_name: postgres_container
+    image: postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=secret
+      - POSTGRES_DB=pgdb
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    ports:
+      - 5432:5432
+    volumes:
+      - ./docker_volumes/postgres:/var/lib/postgresql/data
+    networks:
+      - mynet
+
+networks:
+  mynet:
+    driver: bridge
