@@ -35,23 +35,35 @@ WITH inserted_permission AS ( INSERT INTO permissions (code, description)
                      false,
                      false)
              RETURNING
-                 id)
+                 id),
+     inserted_role_permission AS (INSERT
+         INTO role_permissions (role_id, permission_id)
+             SELECT r.id AS role_id,
+                    p.id AS permission_id
+             FROM inserted_role r
+                      CROSS JOIN inserted_permission p
+             ON CONFLICT DO NOTHING),
+     inserted_user AS (INSERT
+         INTO users (email, username, password_hash)
+             VALUES ('gaconght@gmail.com',
+                     'Thanh Nhut',
+                     '$argon2id$v=19$m=65536,t=3,p=4$oDdsbvL66JBFGcGtpM2bVQ$BSuYE86W6ALjeRJmC9I5sv/pr6xXJj3eFGvgS+aF7Io')
+             RETURNING id)
 
-INSERT INTO role_permissions (role_id, permission_id)
-SELECT
-    r.id AS role_id,
-    p.id AS permission_id
-FROM inserted_role r
-CROSS JOIN inserted_permission p
-ON CONFLICT DO NOTHING;
-
-
-
+INSERT
+INTO user_roles (user_id, role_id)
+SELECT u.id AS user_id, r.id AS role_id
+FROM inserted_user u
+         CROSS JOIN inserted_role r;
 COMMIT;
 
+select * from users;
 
-
-delete  from roles;
-delete  from permissions;
-delete  from role_permissions;
+--
+-- delete
+-- from roles;
+-- delete
+-- from permissions;
+-- delete
+-- from role_permissions;
 
