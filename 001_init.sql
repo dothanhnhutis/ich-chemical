@@ -40,7 +40,7 @@ CREATE TABLE IF NOT EXISTS files
     CONSTRAINT files_pkey PRIMARY KEY (id)
 );
 
---- create permissions table
+-- create permissions table
 CREATE TABLE IF NOT EXISTS permissions
 (
     id          TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS permissions
     CONSTRAINT permissions_code_unique UNIQUE (code)
 );
 
---- create role_permissions table
+-- create role_permissions table
 CREATE TABLE IF NOT EXISTS role_permissions
 (
     role_id       TEXT           NOT NULL,
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS role_permissions
     CONSTRAINT role_permissions_pkey PRIMARY KEY (role_id, permission_id)
 );
 
---- create roles table
+-- create roles table
 CREATE TABLE IF NOT EXISTS roles
 (
     id             TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
@@ -76,7 +76,7 @@ CREATE TABLE IF NOT EXISTS roles
     CONSTRAINT roles_pkey PRIMARY KEY (id)
 );
 
---- create user_roles table
+-- create user_roles table
 CREATE TABLE IF NOT EXISTS user_roles
 (
     user_id    TEXT           NOT NULL,
@@ -85,7 +85,7 @@ CREATE TABLE IF NOT EXISTS user_roles
     CONSTRAINT user_roles_pkey PRIMARY KEY (user_id, role_id)
 );
 
---- create users table
+-- create users table
 CREATE TABLE IF NOT EXISTS users
 (
     id             TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
@@ -99,7 +99,7 @@ CREATE TABLE IF NOT EXISTS users
     CONSTRAINT users_pkey PRIMARY KEY (id)
 );
 
---- create user_avatars table
+-- create user_avatars table
 CREATE TABLE IF NOT EXISTS user_avatars
 (
     file_id    TEXT           NOT NULL,
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS user_avatars
     CONSTRAINT user_avatars_pkey PRIMARY KEY (file_id, user_id)
 );
 
---- create supplier table
+-- create supplier table
 CREATE TABLE IF NOT EXISTS suppliers
 (
     id                   TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
@@ -120,10 +120,12 @@ CREATE TABLE IF NOT EXISTS suppliers
     deleted_at           TIMESTAMPTZ(3),          -- soft delete
     created_at           TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
-    CONSTRAINT suppliers_pkey PRIMARY KEY (id)
+    CONSTRAINT suppliers_pkey PRIMARY KEY (id),
+    CONSTRAINT suppliers_company_abbreviation_unique UNIQUE (company_abbreviation)
 );
 
---- create chemical_suppliers table
+
+-- create chemical_suppliers table
 CREATE TABLE IF NOT EXISTS chemical_suppliers
 (
     supplier_id TEXT           NOT NULL,
@@ -331,12 +333,11 @@ CREATE TABLE IF NOT EXISTS chemical_issue_items
 CREATE INDEX idx_audit_logs_data_gin ON audit_logs USING GIN (old_data, new_data);
 
 --- create index roles table
-CREATE INDEX IF NOT EXISTS idx_roles_active ON roles (status) WHERE deleted_at IS NULL;
-CREATE INDEX IF NOT EXISTS idx_roles_not_deleted ON roles (deleted_at);
+CREATE INDEX IF NOT EXISTS idx_roles_status ON roles (status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_roles_name_status_active ON roles (name, status) WHERE deleted_at IS NULL;
 
 --- create index users table
-CREATE INDEX IF NOT EXISTS idx_users_active ON users (status);
-CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_active_unique ON users (email);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email);
 
 -- create check chemical_lots table
 ALTER TABLE chemical_lots
