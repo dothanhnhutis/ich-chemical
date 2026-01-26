@@ -8,24 +8,37 @@ ALTER DATABASE pgdb
     SET
         timezone = 'UTC';
 
---- create files table
+-- create audit_logs table
+CREATE TABLE IF NOT EXISTS audit_logs
+(
+    id             TEXT NOT NULL  DEFAULT uuidv7()::text,
+    table_name     TEXT NOT NULL,               -- Thông tin bảng dữ liệu
+    record_id      TEXT NOT NULL,               -- Thông tin dòng dữ liệu
+    action         TEXT NOT NULL,               -- INSERT, UPDATE, DELETE
+    old_data       JSONB,                       -- Dữ liệu trước khi sửa
+    new_data       JSONB,                       -- Dữ liệu sau khi sửa
+    changed_by     TEXT NOT NULL,               -- ID người thực hiện
+    transaction_id TEXT,                        -- ID transaction
+    changed_at     TIMESTAMPTZ(3) DEFAULT NOW() -- Thời gian thực hiện
+);
+
+-- create files table
 CREATE TABLE IF NOT EXISTS files
 (
     id            TEXT           NOT NULL DEFAULT uuidv7()::text,
-    original_name TEXT           NOT NULL,
-    mime_type     VARCHAR(255)   NOT NULL,
-    destination   TEXT           NOT NULL,
-    file_name     TEXT           NOT NULL,
-    path          TEXT           NOT NULL,
-    size          BIGINT         NOT NULL,
-    uploaded_by   TEXT           NOT NULL,
-    deleted_at    TIMESTAMPTZ(3),
+    original_name TEXT           NOT NULL, -- tên file người dùng upload
+    mime_type     VARCHAR(255)   NOT NULL, -- loại file
+    destination   TEXT           NOT NULL, -- đường dẫn ngắn đến file
+    file_name     TEXT           NOT NULL, -- tên file
+    path          TEXT           NOT NULL, -- đường dẫn đầy đủ đến file
+    size          BIGINT         NOT NULL, -- kích thước file
+    uploaded_by   TEXT           NOT NULL, -- upload bởi ai
+    deleted_at    TIMESTAMPTZ(3),          -- xoá lúc nào
     -- category_id TEXT,
     created_at    TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     updated_at    TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     CONSTRAINT files_pkey PRIMARY KEY (id)
 );
-
 
 --- create permissions table
 CREATE TABLE IF NOT EXISTS permissions
@@ -128,8 +141,9 @@ CREATE TABLE IF NOT EXISTS chemical_manufacturers
     deleted_at     TIMESTAMPTZ(3),          -- soft delete
     created_at     TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     updated_at     TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
-    CONSTRAINT chemicals_pkey PRIMARY KEY (id)
+    CONSTRAINT chemical_manufacturers_pkey PRIMARY KEY (id)
 );
+
 
 --- create chemicals table
 CREATE TABLE IF NOT EXISTS chemicals
@@ -261,7 +275,7 @@ CREATE TABLE IF NOT EXISTS chemical_receipt_items
     deleted_at        TIMESTAMPTZ(3),                     -- soft delete
     created_at        TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     updated_at        TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
-    CONSTRAINT chemical_receipts_pkey PRIMARY KEY (id)
+    CONSTRAINT chemical_receipt_items_pkey PRIMARY KEY (id)
 );
 
 --- create user_avatars table
@@ -279,38 +293,42 @@ CREATE TABLE IF NOT EXISTS chemical_receipt_images
 --- create chemical_receipts table
 CREATE TABLE IF NOT EXISTS chemical_issues
 (
-    id         TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
-    issue_type VARCHAR(50)    NOT NULL,            -- PRODUCTION | SAMPLE | ADJUSTMENT | WASTE
+    id          TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
+    status      VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',-- DRAFT | POSTED | CANCELLED
+    issue_type  VARCHAR(50)    NOT NULL,                -- PRODUCTION | SAMPLE | ADJUSTMENT | WASTE
     issued_at   TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
 
---     issued_at       TEXT           NOT NULL,               -- xuất bởi ai
-    note       TEXT           NOT NULL DEFAULT '', -- ghi chú
-    deleted_at TIMESTAMPTZ(3),                     -- soft delete
-    created_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+--     issued_by       TEXT           NOT NULL,               -- xuất bởi ai
+    note        TEXT           NOT NULL DEFAULT '',     -- ghi chú
+    cancel_note TEXT           NOT NULL DEFAULT '',     -- ghi chú huỷ
+    cancel_at   TIMESTAMPTZ(3),                         -- thời gian huỷ
+    deleted_at  TIMESTAMPTZ(3),                         -- soft delete
+    created_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     CONSTRAINT chemical_issues_pkey PRIMARY KEY (id)
 );
 
 
 CREATE TABLE IF NOT EXISTS chemical_issue_items
 (
-    id             TEXT NOT NULL DEFAULT uuidv7()::TEXT,
-    issue_id       TEXT NOT NULL,
+    id              TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
+    issue_id        TEXT           NOT NULL,
+    chemical_id     TEXT           NOT NULL, -- snapshot để báo cáo
+    lot_id          TEXT           NOT NULL, -- truy vết tồn kho chi tiết
 
-    chemical_id    TEXT NOT NULL,         -- snapshot để báo cáo
-    lot_id         TEXT NOT NULL,         -- truy vết tồn kho chi tiết
+    quantity_issued DECIMAL(15, 3) NOT NULL,
 
-    quantity_issued DECIMAL(15,3) NOT NULL,
+    note            TEXT           NOT NULL DEFAULT '',
 
-    note           TEXT NOT NULL DEFAULT '',
-
-    deleted_at     TIMESTAMPTZ(3),
-    created_at     TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
-    updated_at     TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+    deleted_at      TIMESTAMPTZ(3),
+    created_at      TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ(3) NOT NULL DEFAULT now(),
 
     CONSTRAINT chemical_issue_items_pkey PRIMARY KEY (id)
 );
 
+-- create index audit_logs table
+CREATE INDEX idx_audit_logs_data_gin ON audit_logs USING GIN (old_data, new_data);
 
 --- create index roles table
 CREATE INDEX IF NOT EXISTS idx_roles_active ON roles (status) WHERE deleted_at IS NULL;
@@ -332,7 +350,7 @@ ALTER TABLE chemical_lots
 
 --- AddForeignKey files table
 ALTER TABLE files
-    ADD CONSTRAINT files_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES files (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+    ADD CONSTRAINT files_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 --- AddForeignKey role_permissions table
 ALTER TABLE role_permissions
@@ -385,10 +403,17 @@ ALTER TABLE chemical_order_items
 
 --- AddForeignKey chemical_receipts
 ALTER TABLE chemical_receipts
-    ADD CONSTRAINT chemical_receipts_order_item_id_fkey FOREIGN KEY (order_item_id) REFERENCES chemical_order_items (id) ON DELETE CASCADE ON UPDATE CASCADE;
+    ADD CONSTRAINT chemical_receipts_order_id_fkey FOREIGN KEY (order_id) REFERENCES chemical_orders (id) ON DELETE CASCADE ON UPDATE CASCADE;
 
--- ALTER TABLE chemical_receipts
---     ADD CONSTRAINT chemical_receipts_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES chemical_lots (id) ON DELETE CASCADE ON UPDATE CASCADE;
+-- AddForeignKey chemical_receipt_items table
+ALTER TABLE chemical_receipt_items
+    ADD CONSTRAINT chemical_receipt_items_receipt_id_fkey FOREIGN KEY (receipt_id) REFERENCES chemical_receipts (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE chemical_receipt_items
+    ADD CONSTRAINT chemical_receipt_items_chemical_id_fkey FOREIGN KEY (chemical_id) REFERENCES chemicals (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE chemical_receipt_items
+    ADD CONSTRAINT chemical_receipt_items_lot_id_fkey FOREIGN KEY (lot_id) REFERENCES chemical_lots (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE chemical_receipt_items
+    ADD CONSTRAINT chemical_receipt_items_order_item_id_fkey FOREIGN KEY (order_item_id) REFERENCES chemical_order_items (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
 
 --- func set_updated_at
