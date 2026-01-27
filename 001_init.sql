@@ -250,15 +250,20 @@ CREATE TABLE IF NOT EXISTS chemical_order_items
 --- create chemical_receipts table
 CREATE TABLE IF NOT EXISTS chemical_receipts
 (
-    id          TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
-    order_id    TEXT,                                   -- mã đơn hàng
-    status      VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',-- DRAFT | POSTED | CANCELLED
-    received_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),  -- thời gian nhận
---     received_by       TEXT           NOT NULL,               -- nhận bởi ai
-    note        TEXT           NOT NULL DEFAULT '',     -- ghi chú
-    deleted_at  TIMESTAMPTZ(3),                         -- soft delete
-    created_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    id           TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
+    order_id     TEXT,                                   -- mã đơn hàng
+    status       VARCHAR(20)    NOT NULL DEFAULT 'DRAFT',-- DRAFT | POSTED | CANCELLED
+    received_at  TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),  -- Thời gian nhận
+    note         TEXT           NOT NULL DEFAULT '',     -- Ghi chú
+    created_by   TEXT           NOT NULL,                -- ID người tạo phiếu
+    updated_by   TEXT,                                   -- ID người cập nhật cuối cùng
+    received_by  TEXT,                                   -- ID người thực hiện nhập kho
+    cancelled_by TEXT,                                   -- ID người hủy phiếu
+    deleted_at   TIMESTAMPTZ(3),                         -- Soft delete
+    cancel_note  TEXT           NOT NULL DEFAULT '',     -- Lý do huỷ
+    cancel_at    TIMESTAMPTZ(3),                         -- Thời gian huỷ
+    created_at   TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    updated_at   TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
     CONSTRAINT chemical_receipts_pkey PRIMARY KEY (id)
 );
 
@@ -266,11 +271,11 @@ CREATE TABLE IF NOT EXISTS chemical_receipts
 CREATE TABLE IF NOT EXISTS chemical_receipt_items
 (
     id                TEXT           NOT NULL DEFAULT uuidv7()::TEXT,
-    receipt_id        TEXT           NOT NULL,
-    order_item_id     TEXT,                               -- mã phẩn tử của đơn hàng
-    chemical_id       TEXT           NOT NULL,            -- mã nguyên liệu
-    lot_id            TEXT           NOT NULL,            -- mã lot
-    quantity_received DECIMAL(15, 3) NOT NULL,            -- số lượng nhận gram
+    receipt_id        TEXT           NOT NULL,            -- ID phiếu nhập
+    order_item_id     TEXT,                               -- ID phẩn tử của đơn hàng (nếu có)
+    chemical_id       TEXT           NOT NULL,            -- ID nguyên liệu
+    lot_id            TEXT           NOT NULL,            -- ID lot
+    quantity_received DECIMAL(15, 3) NOT NULL,            -- Số lượng nhận gram
 --     invoice_no        INT,                                   -- số hoá đơn
 --     invoice_date      DATE,                                  -- ngày hoá đơn
     note              TEXT           NOT NULL DEFAULT '', -- ghi chú

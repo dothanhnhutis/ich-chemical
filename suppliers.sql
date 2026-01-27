@@ -1,0 +1,1 @@
+INSERT INTO suppliers (company_name, company_abbreviation) VALUES ('CÔNG TY TNHH IWASE COSFA VIỆT NAM', 'Iwase Cosfa VN');

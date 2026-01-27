@@ -1,0 +1,1 @@
+INSERT INTO chemical_manufacturers ( name, origin_country)  VALUES('KATAKURA & CO-OP AGRI CORP','Nhật Bản');
