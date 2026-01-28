@@ -186,6 +186,13 @@ CREATE TABLE IF NOT EXISTS chemical_msds
     CONSTRAINT chemical_msds_pkey PRIMARY KEY (file_id, chemical_id)
 );
 
+-- create lot_sequences table
+CREATE TABLE IF NOT EXISTS lot_sequences
+(
+    prefix_date DATE NOT NULL,     -- Lưu ngày (ví dụ: 2026-01-04)
+    last_val    INTEGER DEFAULT 0, -- Số thứ tự cuối cùng trong ngày đó
+    CONSTRAINT lot_sequences_pkey PRIMARY KEY (prefix_date)
+);
 
 --- create chemical_lots table
 CREATE TABLE IF NOT EXISTS chemical_lots
@@ -354,6 +361,10 @@ ALTER TABLE chemical_lots
                 AND extract(month from manufactured_date) = 1)
             );
 
+ALTER TABLE chemical_lots
+    drop CONSTRAINT chk_date_precision_logic;
+
+
 --- AddForeignKey files table
 ALTER TABLE files
     ADD CONSTRAINT files_uploaded_by_fkey FOREIGN KEY (uploaded_by) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -435,6 +446,105 @@ BEGIN
     RETURN NEW;
 END;
 $$;
+
+--
+CREATE OR REPLACE FUNCTION fn_generate_lot_no_v2()
+    RETURNS TRIGGER AS
+$$
+DECLARE
+    today           DATE := CURRENT_DATE;
+    new_seq         INTEGER;
+    current_day_str TEXT;
+BEGIN
+    -- 1. Cập nhật hoặc chèn mới vào bảng sequence (Sử dụng UPSERT)
+    -- Lệnh này sẽ LOCK dòng của ngày hôm nay, tránh Race Condition tuyệt đối
+    INSERT INTO lot_sequences (prefix_date, last_val)
+    VALUES (today, 1)
+    ON CONFLICT (prefix_date)
+        DO UPDATE SET last_val = lot_sequences.last_val + 1
+    RETURNING last_val INTO new_seq;
+
+    -- 2. Format mã lô
+    current_day_str := to_char(today, 'YYYYMMDD');
+    NEW.lot_no := 'ICHLOT' || current_day_str || lpad(new_seq::TEXT, 4, '0');
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+--
+CREATE TRIGGER trg_generate_lot_no
+    BEFORE INSERT
+    ON chemical_lots
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generate_lot_no_v2();
+
+
+--
+CREATE OR REPLACE FUNCTION fn_generic_audit_log()
+    RETURNS TRIGGER AS
+$$
+DECLARE
+    v_tx_id   TEXT;
+    v_user_id TEXT;
+BEGIN
+    -- 1. Transaction ID (batch id)
+    v_tx_id := current_setting('app.current_transaction_id', true);
+
+    IF v_tx_id IS NULL THEN
+        v_tx_id := uuidv7()::TEXT;
+        PERFORM set_config(
+                'app.current_transaction_id',
+                v_tx_id,
+                true -- LOCAL to transaction
+                );
+    END IF;
+
+    -- 2. User ID (từ app context)
+    v_user_id := current_setting('app.current_user_id', true);
+
+    -- 3. Audit log
+    INSERT INTO audit_logs (transaction_id,
+                            table_name,
+                            record_id,
+                            action,
+                            old_data,
+                            new_data,
+                            changed_by)
+    VALUES (v_tx_id,
+            TG_TABLE_NAME,
+            CASE
+                WHEN TG_OP = 'DELETE' THEN OLD.id::TEXT
+                ELSE NEW.id::TEXT
+                END,
+            TG_OP,
+            CASE
+                WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD)
+                END,
+            CASE
+                WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW)
+                END,
+            COALESCE(v_user_id, 'SYSTEM'));
+
+    -- AFTER trigger only
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+--
+CREATE TRIGGER trg_audit_issues
+    AFTER INSERT OR UPDATE OR DELETE
+    ON chemical_receipts
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generic_audit_log();
+
+-- Cho bảng con
+CREATE TRIGGER trg_audit_issue_items
+    AFTER INSERT OR UPDATE OR DELETE
+    ON chemical_receipt_items
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generic_audit_log();
 
 --- tạo trigger tự động cập nhật updated_at cho tất cả table nào có field updated_at
 DO
