@@ -1,63 +1,69 @@
-INSERT INTO suppliers (company_name, company_abbreviation)
-VALUES ('CÔNG TY TNHH IWASE COSFA VIỆT NAM', 'Iwase Cosfa VN'),
-       ('CÔNG TY TNHH KHANG NGOC', 'Khang Ngọc'),
-       ('CÔNG TY TNHH INTRIE COSMETIC', 'Intrie Cosmetic')
+INSERT INTO suppliers (id, company_name, company_abbreviation)
+VALUES ('019c07b5-1336-7ed6-9f0d-1d463daaf33f', 'CÔNG TY TNHH IWASE COSFA VIỆT NAM', 'Iwase Cosfa VN'),
+       ('019c07b5-133d-799a-8bbe-aa8aa79797fe', 'CÔNG TY TNHH KHANG NGOC', 'Khang Ngọc'),
+       ('019c07b5-133d-7a2c-b69e-ba5ea7e85bcb', 'CÔNG TY TNHH INTRIE COSMETIC', 'Intrie Cosmetic')
 RETURNING *;
 
 
-INSERT INTO chemical_manufacturers (name, origin_country)
-VALUES ('KATAKURA & CO-OP AGRI CORP', 'Nhật Bản'),
-       ('Sinoway Industrial Co.,Ltd', 'Trung Quốc'),
-       ('BASF SE', 'Đức'),
-       ('CoSeedBioPharm Co., Ltd', 'Hàn Quốc'),
-       ('Macrocare Tech Co.,Ltd', 'Hàn Quốc')
+INSERT INTO chemical_manufacturers (id, name, origin_country)
+VALUES ('019c07bb-018d-7a01-a5d9-10a3ec08ca12', 'KATAKURA & CO-OP AGRI CORP', 'Nhật Bản'),
+       ('019c07bb-0190-779b-85fb-88c2d686d4ff', 'Sinoway Industrial Co.,Ltd', 'Trung Quốc'),
+       ('019c07bb-0190-780d-9368-fb0fea8229cc', 'BASF SE', 'Đức'),
+       ('019c07bb-0190-782e-ba1f-fa0d00604e8c', 'CoSeedBioPharm Co., Ltd', 'Hàn Quốc'),
+       ('019c07bb-0190-784b-9475-a6929ad5de8b', 'Macrocare Tech Co.,Ltd', 'Hàn Quốc')
 RETURNING *;
 
-INSERT INTO chemicals (manufacturer_id, trade_name, label_name, coa_name)
-VALUES ('019c04b1-60a7-72e9-ba00-1379c1fa4d3d', 'Fermented Honey', '', ''),
-       ('019c04b1-60a7-72e9-ba00-1379c1fa4d3d', 'Nano Bubble Ginger Extract H', '', ''),
-       ('019c04b1-60a7-72e9-ba00-1379c1fa4d3d', 'Pink Rockrose Extract', '', ''),
-       ('019c04b1-60a7-7792-be9d-b91968c8593d', 'Bakuchiol 99%', '', ''),
-       ('019c04b1-60a7-77c3-9053-4475f7c1f6a3', 'Vitamin E Acetate 98%', '', ''),
-       ('019c04b1-60a7-77d9-8517-216fc2eaf903', 'Blue - BP(1.5)', '', ''),
-       ('019c04b1-60a7-77ed-9039-dda9c708ed25', 'MC-SALICARE', '', '')
+INSERT INTO chemicals (id, manufacturer_id, trade_name, label_name, coa_name)
+VALUES ('019c07c3-b612-7483-b6ff-56a3bbcb826b', '019c07bb-018d-7a01-a5d9-10a3ec08ca12', 'Fermented Honey', '', ''),
+       ('019c07c3-b616-7ef0-80a5-34b8fe0f2db3', '019c07bb-018d-7a01-a5d9-10a3ec08ca12', 'Nano Bubble Ginger Extract H',
+        '', ''),
+       ('019c07c3-b616-7f69-97de-99a16ce024ba', '019c07bb-018d-7a01-a5d9-10a3ec08ca12', 'Pink Rockrose Extract', '',
+        ''),
+       ('019c07c3-b616-7f90-b603-590186cfae00', '019c07bb-0190-779b-85fb-88c2d686d4ff', 'Bakuchiol 99%', '', ''),
+       ('019c07c3-b616-7fb2-9a2e-e5254113f9f4', '019c07bb-0190-780d-9368-fb0fea8229cc', 'Vitamin E Acetate 98%', '',
+        ''),
+       ('019c07c3-b616-7fd2-84c8-eea955612796', '019c07bb-0190-782e-ba1f-fa0d00604e8c', 'Blue - BP(1.5)', '', ''),
+       ('019c07c3-b616-7ff6-b8c9-a539dc04204d', '019c07bb-0190-784b-9475-a6929ad5de8b', 'MC-SALICARE', '', '')
 RETURNING *;
 
 INSERT INTO chemical_suppliers(supplier_id, chemical_id)
-values ('019c04b0-e59f-7338-b68e-aa6de414c654', '019c04b3-8837-7b85-8e42-630b8838912a'),
-       ('019c04b0-e59f-7338-b68e-aa6de414c654', '019c04b3-8837-7f55-b235-3ecd0584fd81'),
-       ('019c04b0-e59f-7338-b68e-aa6de414c654', '019c04b3-8837-7f87-b2fb-aa12d6815105'),
-       ('019c04b0-e59f-7b08-80c6-af5f09508e96', '019c04b3-8837-7f9f-ab1f-714739377a74'),
-       ('019c04b0-e59f-7b08-80c6-af5f09508e96', '019c04b3-8837-7fb4-b8a4-f62bf3f839ff'),
-       ('019c04b0-e59f-7b08-80c6-af5f09508e96', '019c04b3-8837-7fc8-8aa7-e5cee071c33e'),
-       ('019c04b0-e59f-7b4b-b690-50d78f6809b4', '019c04b3-8837-7fe3-b6b4-7d02248afd5c')
+values ('019c07b5-1336-7ed6-9f0d-1d463daaf33f', '019c07c3-b612-7483-b6ff-56a3bbcb826b'),
+       ('019c07b5-1336-7ed6-9f0d-1d463daaf33f', '019c07c3-b616-7ef0-80a5-34b8fe0f2db3'),
+       ('019c07b5-1336-7ed6-9f0d-1d463daaf33f', '019c07c3-b616-7f69-97de-99a16ce024ba'),
+       ('019c07b5-133d-799a-8bbe-aa8aa79797fe', '019c07c3-b616-7f90-b603-590186cfae00'),
+       ('019c07b5-133d-799a-8bbe-aa8aa79797fe', '019c07c3-b616-7fb2-9a2e-e5254113f9f4'),
+       ('019c07b5-133d-799a-8bbe-aa8aa79797fe', '019c07c3-b616-7fd2-84c8-eea955612796'),
+       ('019c07b5-133d-7a2c-b69e-ba5ea7e85bcb', '019c07c3-b616-7ff6-b8c9-a539dc04204d')
 RETURNING *;
 
 
-INSERT INTO chemical_lots (chemical_id, batch_number, date_precision)
-VALUES ('019c04b3-8837-7b85-8e42-630b8838912a', 'FHP25E28', 'day'),
-       ('019c04b3-8837-7f55-b235-3ecd0584fd81', 'GNB25F17H', 'day'),
-       ('019c04b3-8837-7f87-b2fb-aa12d6815105', 'PREG25E16', 'day'),
-       ('019c04b3-8837-7f9f-ab1f-714739377a74', '25101802', 'day'),
-       ('019c04b3-8837-7fb4-b8a4-f62bf3f839ff', '39685856P0', 'day'),
-       ('019c04b3-8837-7fc8-8aa7-e5cee071c33e', 'EC3101', 'day'),
-       ('019c04b3-8837-7fe3-b6b4-7d02248afd5c', 'MCSC240716', 'day')
+INSERT INTO chemical_lots (id, chemical_id, batch_number, date_precision)
+VALUES ('019c07c8-cbfd-7a87-865f-62ead77f0793', '019c07c3-b612-7483-b6ff-56a3bbcb826b', 'FHP25E28', 'day'),
+       ('019c07c8-cc0a-7ad9-b146-9ded5dc96fb5', '019c07c3-b616-7ef0-80a5-34b8fe0f2db3', 'GNB25F17H', 'day'),
+       ('019c07c8-cc0a-7da5-814e-4dec4ea833cf', '019c07c3-b616-7f69-97de-99a16ce024ba', 'PREG25E16', 'day'),
+       ('019c07c8-cc0a-7f20-ba10-230f675d2e74', '019c07c3-b616-7f90-b603-590186cfae00', '25101802', 'day'),
+       ('019c07c8-cc0b-7092-9602-5519b57ab0c3', '019c07c3-b616-7fb2-9a2e-e5254113f9f4', '39685856P0', 'day'),
+       ('019c07c8-cc0b-71de-9884-7e4f9fe1c18b', '019c07c3-b616-7fd2-84c8-eea955612796', 'EC3101', 'day'),
+       ('019c07c8-cc0b-73b6-a668-a7f39110be88', '019c07c3-b616-7ff6-b8c9-a539dc04204d', 'MCSC240716', 'day')
 RETURNING *;
 
-
+delete from audit_logs;
 
 BEGIN;
-SET LOCAL app.current_user_id = '018d4567-e89b-7123-a456-426614174000';
-
-with new_receipt as (INSERT INTO chemical_receipts (status, note) VALUES ('DRAFT', 'test') RETURNING id)
-insert
-into chemical_receipt_items (receipt_id, chemical_id, lot_id, quantity_received, note)
-SELECT r.id, '019c04b3-8837-7b85-8e42-630b8838912a', '019c04f6-04e7-7079-8c00-a3d34f38a687', 200, 'oker'
-FROM new_receipt as r;
+WITH new_receipt AS (INSERT INTO chemical_receipts (created_by,status, note) VALUES ('018d4567-e89b-7123-a456-426614174000','DRAFT', 'test') RETURNING id)
+INSERT
+INTO chemical_receipt_items (receipt_id, chemical_id, lot_id, quantity_received, note)
+SELECT r.id, '019c07c3-b612-7483-b6ff-56a3bbcb826b', '019c07c8-cbfd-7a87-865f-62ead77f0793', 200, 'oker'
+FROM new_receipt AS r;
 COMMIT;
 
+BEGIN;
 
-select * from audit_logs;
+INSERT INTO chemical_receipts (created_by,status, note) VALUES ('018d4567-e89b-7123-a456-426614174000','DRAFT', 'test') RETURNING *;
+COMMIT;
+
+select *
+from audit_logs;
 
 
 select *
