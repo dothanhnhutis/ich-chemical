@@ -1,3 +1,51 @@
+-- seed production
+COPY users
+    FROM '/data_csv/permissions.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+COPY users
+    FROM '/data_csv/roles.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+COPY users
+    FROM '/data_csv/role_permissions.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+COPY users
+    FROM '/data_csv/users.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+COPY users
+    FROM '/data_csv/user_roles.csv' WITH (FORMAT csv, HEADER true, DELIMITER ',');
+
+
+-- seed dev
+
+INSERT INTO permissions (code, description)
+    VALUES ('USER_VIEW', 'Xem danh sách user'),
+           ('USER_CREATE', 'Tạo user'),
+           ('USER_UPDATE', 'Cập nhật user'),
+           ('USER_DELETE', 'Xoá user'),
+
+           ('ROLE_VIEW', 'Xem role'),
+           ('ROLE_CREATE', 'Tạo role'),
+           ('ROLE_UPDATE', 'Cập nhật role'),
+           ('ROLE_DELETE', 'Xoá role'),
+
+           ('CHEMICAL_VIEW', 'Xem nguyên liệu'),
+           ('CHEMICAL_CREATE', 'Tạo nguyên liệu'),
+           ('CHEMICAL_UPDATE', 'Cập nhật nguyên liệu'),
+           ('CHEMICAL_DELETE', 'Xoá nguyên liệu'),
+
+           ('ORDER_VIEW', 'Xem đơn nhập'),
+           ('ORDER_CREATE', 'Tạo đơn nhập'),
+           ('ORDER_UPDATE', 'Cập nhật đơn nhập'),
+           ('ORDER_CANCEL', 'Huỷ đơn nhập'),
+
+           ('RECEIPT_VIEW', 'Xem phiếu nhận'),
+           ('RECEIPT_CREATE', 'Tạo phiếu nhận'),
+
+           ('STOCK_VIEW', 'Xem tồn kho'),
+           ('STOCK_ADJUST', 'Điều chỉnh tồn kho')
+    ON CONFLICT (code) DO NOTHING RETURNING *;
+
+
 --- Tạo tài khoản user và role với transaction
 BEGIN;
 WITH inserted_permission AS ( INSERT INTO permissions (code, description)
@@ -57,13 +105,5 @@ FROM inserted_user u
          CROSS JOIN inserted_role r;
 COMMIT;
 
-select * from users;
 
---
--- delete
--- from roles;
--- delete
--- from permissions;
--- delete
--- from role_permissions;
 

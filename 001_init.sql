@@ -8,7 +8,7 @@ ALTER DATABASE pgdb
     SET
         timezone = 'UTC';
 
-
+-- create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs
 (
     id             TEXT NOT NULL  DEFAULT uuidv7()::text,
@@ -21,7 +21,6 @@ CREATE TABLE IF NOT EXISTS audit_logs
     transaction_id TEXT,                        -- ID transaction
     changed_at     TIMESTAMPTZ(3) DEFAULT NOW() -- Thời gian thực hiện
 );
-
 
 -- create permissions table
 CREATE TABLE IF NOT EXISTS permissions
@@ -86,26 +85,107 @@ CREATE TABLE IF NOT EXISTS users
 -- create index audit_logs table
 CREATE INDEX idx_audit_logs_data_gin ON audit_logs USING GIN (old_data, new_data);
 
---- create index roles table
+-- create index roles table
 CREATE INDEX IF NOT EXISTS idx_roles_status ON roles (status) WHERE deleted_at IS NULL;
 CREATE INDEX IF NOT EXISTS idx_roles_name_status_active ON roles (name, status) WHERE deleted_at IS NULL;
 
-
---- create index users table
+-- create index users table
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email);
 
-
---- AddForeignKey role_permissions table
+-- AddForeignKey role_permissions table
 ALTER TABLE role_permissions
     ADD CONSTRAINT role_permissions_role_id_fkey FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE role_permissions
     ADD CONSTRAINT role_permissions_permission_id_fkey FOREIGN KEY (permission_id) REFERENCES permissions (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
-
---- AddForeignKey user_roles table
+-- AddForeignKey user_roles table
 ALTER TABLE user_roles
     ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE user_roles
     ADD CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 
+-- create fn_generic_audit_log trigger function
+CREATE OR REPLACE FUNCTION fn_generic_audit_log()
+    RETURNS TRIGGER AS
+$$
+DECLARE
+    v_tx_id     TEXT;
+    v_user_id   TEXT;
+    v_record_id TEXT;
+    v_data      JSONB;
+BEGIN
+    -- 1. Transaction ID (batch id)
+    v_tx_id := current_setting('ich_app.current_transaction_id', true);
+    IF v_tx_id = '' OR v_tx_id IS NULL THEN
+        v_tx_id := uuidv7()::TEXT;
+        PERFORM set_config('ich_app.current_transaction_id', v_tx_id, true);
+    END IF;
 
+    -- 2. User ID (từ app context)
+    v_user_id := current_setting('ich_app.current_user_id', true);
+    IF v_user_id = '' OR v_user_id IS NULL THEN
+        v_user_id := 'SYSTEM';
+        PERFORM set_config('ich_app.current_user_id', v_user_id, true);
+    END IF;
+
+
+    -- 3. Xác định giá trị cho v_record_id
+    IF TG_OP = 'DELETE' THEN
+        v_data := to_jsonb(OLD);
+    ELSE
+        v_data := to_jsonb(NEW);
+    END IF;
+
+    IF v_data ? 'id' THEN
+        v_record_id := v_data ->> 'id';
+    ELSEIF v_data ? 'role_id' AND v_data ? 'permission_id' THEN
+        v_record_id := (v_data ->> 'role_id') || ':' || (v_data ->> 'permission_id');
+    END IF;
+
+
+    -- 3. Audit log
+    INSERT INTO audit_logs (transaction_id,
+                            table_name,
+                            record_id,
+                            action,
+                            old_data,
+                            new_data,
+                            changed_by)
+    VALUES (v_tx_id,
+            TG_TABLE_NAME,
+            v_record_id,
+            TG_OP,
+            CASE
+                WHEN TG_OP <> 'INSERT' THEN to_jsonb(OLD)
+                END,
+            CASE
+                WHEN TG_OP <> 'DELETE' THEN to_jsonb(NEW)
+                END,
+            v_user_id);
+
+    -- AFTER trigger only
+    RETURN NULL;
+END;
+$$ LANGUAGE plpgsql;
+
+
+-- create trigger permissions
+CREATE TRIGGER trg_permissions
+    AFTER INSERT OR UPDATE OR DELETE
+    ON permissions
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generic_audit_log();
+
+-- create trigger roles
+CREATE TRIGGER trg_roles
+    AFTER INSERT OR UPDATE OR DELETE
+    ON roles
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generic_audit_log();
+
+-- create trigger role_permissions
+CREATE TRIGGER trg_role_permissions
+    AFTER INSERT OR UPDATE OR DELETE
+    ON role_permissions
+    FOR EACH ROW
+EXECUTE FUNCTION fn_generic_audit_log();
