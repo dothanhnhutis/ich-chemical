@@ -1,24 +1,37 @@
-SELECT u.id,
-       u.email,
-       u.password_hash,
-       u.username,
-       u.status,
-       u.deactivated_at,
-       u.created_at,
-       u.updated_at,
-       COALESCE(json_agg(json_build_object('id', r.id,
-                                           'name', r.name,
-                                           'description', r.description,
-                                           'status', r.status,
-                                           'deactivated_at', r.deactivated_at,
-                                           'can_delete', r.can_delete,
-                                           'can_update', r.can_update,
-                                           'created_at', r.created_at,
-                                           'updated_at', r.updated_at)) FILTER (WHERE r.id IS NOT NULL), '[]'::json) AS roles
-FROM users u
-         LEFT JOIN user_roles ur ON ur.user_id = u.id
-         LEFT JOIN roles r ON r.id = ur.role_id AND r.deactivated_at IS NULL
-         LEFT JOIN role_permissions rp ON rp.role_id = r.id
-         LEFT JOIN permissions p ON p.id = rp.permission_id
-WHERE email = 'gaconght@gmail.com'
-GROUP BY u.id, u.email, u.password_hash, u.username, u.status, u.deactivated_at, u.created_at, u.updated_at;
+
+
+-- findUserPasswordByEmail /users/:email
+SELECT *
+FROM users
+WHERE email = 'gaconght@gmail.com';
+
+-- findUserPasswordById /users/:id
+SELECT *
+FROM users
+WHERE id = '019c0df7-89b5-7628-a136-d9d9d00bf754';
+
+-- findUserPermission /users/:id/roles/permissions
+SELECT DISTINCT p.*
+FROM permissions p
+         LEFT JOIN role_permissions rp ON p.id = rp.permission_id
+         LEFT JOIN user_roles ur ON rp.role_id = ur.role_id
+WHERE ur.user_id = '019c0df7-89b5-7628-a136-d9d9d00bf754';
+
+-- findUserPermissionCode /users/:id/roles/permissions/code
+SELECT DISTINCT p.code
+FROM permissions p
+         LEFT JOIN role_permissions rp ON p.id = rp.permission_id
+         LEFT JOIN user_roles ur ON rp.role_id = ur.role_id
+WHERE ur.user_id = '019c0df7-89b5-7628-a136-d9d9d00bf754';
+
+-- findUserRoleDetail /users/:id/roles
+SELECT r.*, ur.created_at as join_at, COALESCE(p_agg.permissions, '[]') AS permissions
+FROM roles r
+         LEFT JOIN user_roles ur ON r.id = ur.role_id
+         LEFT JOIN LATERAL (SELECT jsonb_agg(p.*) AS permissions
+                            FROM permissions p
+                                     LEFT JOIN role_permissions rp ON rp.permission_id = p.id
+                            WHERE rp.role_id = r.id
+    ) p_agg ON TRUE
+WHERE ur.user_id = '019c0df7-89b5-7628-a136-d9d9d00bf754';
+

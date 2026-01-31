@@ -8,6 +8,24 @@ ALTER DATABASE pgdb
     SET
         timezone = 'UTC';
 
+-- create files table
+CREATE TABLE IF NOT EXISTS files
+(
+    id            TEXT           NOT NULL DEFAULT uuidv7()::text,
+    original_name TEXT           NOT NULL, -- tên file người dùng upload
+    mime_type     VARCHAR(255)   NOT NULL, -- loại file
+    destination   TEXT           NOT NULL, -- đường dẫn ngắn đến file
+    file_name     TEXT           NOT NULL, -- tên file
+    path          TEXT           NOT NULL, -- đường dẫn đầy đủ đến file
+    size          BIGINT         NOT NULL, -- kích thước file
+    uploaded_by   TEXT           NOT NULL, -- upload bởi ai
+    deleted_at    TIMESTAMPTZ(3),          -- xoá lúc nào
+    -- category_id TEXT,
+    created_at    TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    CONSTRAINT files_pkey PRIMARY KEY (id)
+);
+
 -- create audit_logs table
 CREATE TABLE IF NOT EXISTS audit_logs
 (
@@ -82,6 +100,19 @@ CREATE TABLE IF NOT EXISTS users
 );
 
 
+-- create user_avatars table
+CREATE TABLE IF NOT EXISTS user_avatars
+(
+    file_id    TEXT           NOT NULL,
+    user_id    TEXT           NOT NULL,
+    width      INTEGER        NOT NULL,
+    height     INTEGER        NOT NULL,
+    is_primary BOOLEAN        NOT NULL DEFAULT FALSE, -- Hình đại diện
+    deleted_at TIMESTAMPTZ(3),                        -- xoá lúc nào
+    created_at TIMESTAMPTZ(3) NOT NULL DEFAULT NOW(),
+    CONSTRAINT user_avatars_pkey PRIMARY KEY (file_id, user_id)
+);
+
 -- create index audit_logs table
 CREATE INDEX idx_audit_logs_data_gin ON audit_logs USING GIN (old_data, new_data);
 
@@ -91,6 +122,9 @@ CREATE INDEX IF NOT EXISTS idx_roles_name_status_active ON roles (name, status) 
 
 -- create index users table
 CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email_unique ON users (email);
+
+-- create index user_avatars_selected table
+CREATE INDEX IF NOT EXISTS idx_user_avatars_selected ON user_avatars (is_primary) WHERE is_primary IS TRUE;
 
 -- AddForeignKey role_permissions table
 ALTER TABLE role_permissions
@@ -103,6 +137,14 @@ ALTER TABLE user_roles
     ADD CONSTRAINT user_roles_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
 ALTER TABLE user_roles
     ADD CONSTRAINT user_roles_role_id_fkey FOREIGN KEY (role_id) REFERENCES roles (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+
+--- AddForeignKey user_avatars table
+ALTER TABLE user_avatars
+    ADD CONSTRAINT user_avatars_user_id_fkey FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE RESTRICT ON UPDATE CASCADE;
+ALTER TABLE user_avatars
+    ADD CONSTRAINT user_avatars_file_id_fkey FOREIGN KEY (file_id) REFERENCES files (id) ON DELETE CASCADE ON UPDATE CASCADE;
+
+
 
 -- create fn_generic_audit_log trigger function
 CREATE OR REPLACE FUNCTION fn_generic_audit_log()
@@ -189,3 +231,53 @@ CREATE TRIGGER trg_role_permissions
     ON role_permissions
     FOR EACH ROW
 EXECUTE FUNCTION fn_generic_audit_log();
+
+
+--- func set_updated_at
+CREATE OR REPLACE FUNCTION set_updated_at()
+    RETURNS TRIGGER
+    LANGUAGE plpgsql AS
+$$
+BEGIN
+    IF NEW IS DISTINCT FROM OLD THEN
+        NEW.updated_at := NOW();
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+--- tạo trigger tự động cập nhật updated_at cho tất cả table nào có field updated_at
+DO
+$$
+    DECLARE
+        r        RECORD;
+        trg_name TEXT;
+    BEGIN
+        FOR r IN
+            SELECT table_schema, table_name
+            FROM information_schema.columns
+            WHERE column_name = 'updated_at'
+              AND table_schema = 'public'
+            LOOP
+                trg_name := format('trg_updated_at_%s', r.table_name);
+
+                EXECUTE format(
+                        'DROP TRIGGER IF EXISTS %I ON %I.%I;',
+                        trg_name,
+                        r.table_schema,
+                        r.table_name
+                        );
+
+                EXECUTE format(
+                        'CREATE TRIGGER %I
+                         BEFORE UPDATE ON %I.%I
+                         FOR EACH ROW
+                         EXECUTE FUNCTION set_updated_at();',
+                        trg_name,
+                        r.table_schema,
+                        r.table_name
+                        );
+            END LOOP;
+    END;
+$$;
