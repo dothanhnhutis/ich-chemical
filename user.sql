@@ -1,5 +1,3 @@
-
-
 -- findUserPasswordByEmail /users/:email
 SELECT *
 FROM users
@@ -7,8 +5,16 @@ WHERE email = 'gaconght@gmail.com';
 
 -- findUserPasswordById /users/:id
 SELECT *
-FROM users
-WHERE id = '019c0df7-89b5-7628-a136-d9d9d00bf754';
+FROM users u
+         LEFT JOIN LATERAL (
+    SELECT (to_jsonb(f.*) || jsonb_build_object('width', ua.width, 'height', ua.height)) AS avatar
+    FROM files f
+             INNER JOIN user_avatars ua ON ua.file_id = f.id
+    WHERE ua.user_id = u.id
+      AND ua.is_primary IS TRUE
+    LIMIT 1
+    ) ON TRUE
+WHERE u.id = '019c1e90-9f8b-7471-8f65-94d40da50c26';
 
 -- findUserPermission /users/:id/roles/permissions
 SELECT DISTINCT p.*
